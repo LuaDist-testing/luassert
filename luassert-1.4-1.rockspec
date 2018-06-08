@@ -1,15 +1,15 @@
 -- This file was automatically generated for the LuaDist project.
 
 package = "luassert"
-version = "1.2-1"
+version = "1.4-1"
 -- LuaDist source
 source = {
-  tag = "1.2-1",
+  tag = "1.4-1",
   url = "git://github.com/LuaDist-testing/luassert.git"
 }
 -- Original source
 -- source = {
---   url = "https://github.com/downloads/Olivine-Labs/luassert/luassert-1.2.tar.gz",
+--   url = "https://github.com/downloads/Olivine-Labs/luassert/luassert-1.4.tar.gz",
 --   dir = "luassert"
 -- }
 description = {
@@ -23,7 +23,7 @@ description = {
 }
 dependencies = {
   "lua >= 5.1",
-  "say >= 1.0-1"
+  "say >= 1.1-1"
 }
 build = {
   type = "builtin",
@@ -36,6 +36,8 @@ build = {
     ["luassert.assertions"] = "src/assertions.lua",
     ["luassert.mock"] = "src/mock.lua",
     ["luassert.init"] = "src/init.lua",
+    ["luassert.formatters.init"] = "src/formatters/init.lua",
+    ["luassert.formatters.binarystring"] = "src/formatters/binarystring.lua",
     ["luassert.languages.en"] = "src/languages/en.lua",
     ["luassert.languages.ar"] = "src/languages/ar.lua",
     ["luassert.languages.fr"] = "src/languages/fr.lua",
