@@ -1,16 +1,16 @@
 -- This file was automatically generated for the LuaDist project.
 
 package = "luassert"
-version = "1.6-1"
+version = "1.7.0-0"
 -- LuaDist source
 source = {
-  tag = "1.6-1",
+  tag = "1.7.0-0",
   url = "git://github.com/LuaDist-testing/luassert.git"
 }
 -- Original source
 -- source = {
---   url = "https://github.com/Olivine-Labs/luassert/archive/v1.6.tar.gz",
---   dir = "luassert-1.6"
+--   url = "https://github.com/Olivine-Labs/luassert/archive/v1.7.0.tar.gz",
+--   dir = "luassert-1.7.0"
 -- }
 description = {
   summary = "Lua Assertions Extension",
@@ -46,5 +46,6 @@ build = {
     ["luassert.languages.ru"] = "src/languages/ru.lua",
     ["luassert.languages.ua"] = "src/languages/ua.lua",
     ["luassert.languages.zh"] = "src/languages/zh.lua",
+    ["luassert.languages.ja"] = "src/languages/ja.lua",
   }
 }
