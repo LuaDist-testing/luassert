@@ -1,17 +1,9 @@
--- This file was automatically generated for the LuaDist project.
-
 package = "luassert"
 version = "1.7.0-0"
--- LuaDist source
 source = {
-  tag = "1.7.0-0",
-  url = "git://github.com/LuaDist-testing/luassert.git"
+  url = "https://github.com/Olivine-Labs/luassert/archive/v1.7.0.tar.gz",
+  dir = "luassert-1.7.0"
 }
--- Original source
--- source = {
---   url = "https://github.com/Olivine-Labs/luassert/archive/v1.7.0.tar.gz",
---   dir = "luassert-1.7.0"
--- }
 description = {
   summary = "Lua Assertions Extension",
   detailed = [[
