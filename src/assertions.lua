@@ -34,8 +34,8 @@ local function equals(state, arguments)
   for i = 2,argcnt  do
     if arguments[1] ~= arguments[i] then
       -- switch arguments for proper output message
-      table.insert(arguments, 1, arguments[i])
-      table.remove(arguments, i + 1)
+      util.tinsert(arguments, 1, arguments[i])
+      util.tremove(arguments, i + 1)
       return false
     end
   end
@@ -50,15 +50,15 @@ local function same(state, arguments)
     if type(arguments[1]) == 'table' and type(arguments[i]) == 'table' then
       if not util.deepcompare(arguments[1], arguments[i], true) then
         -- switch arguments for proper output message
-        table.insert(arguments, 1, arguments[i])
-        table.remove(arguments, i + 1)
+        util.tinsert(arguments, 1, arguments[i])
+        util.tremove(arguments, i + 1)
         return false
       end
     else
       if arguments[1] ~= arguments[i] then
         -- switch arguments for proper output message
-        table.insert(arguments, 1, arguments[i])
-        table.remove(arguments, i + 1)
+        util.tinsert(arguments, 1, arguments[i])
+        util.tremove(arguments, i + 1)
         return false
       end
     end
@@ -113,9 +113,20 @@ local function is_type(state, arguments, etype)
   return arguments.n > 1 and type(arguments[1]) == etype
 end
 
+local function returned_arguments(state, arguments)
+  arguments[1] = tostring(arguments[1])
+  arguments[2] = tostring(arguments.n - 1)
+  arguments.nofmt = arguments.nofmt or {}
+  arguments.nofmt[1] = true
+  arguments.nofmt[2] = true
+  if arguments.n < 2 then arguments.n = 2 end
+  return arguments[1] == arguments[2]
+end
+
 local function is_boolean(state, arguments)  return is_type(state, arguments, "boolean")  end
 local function is_number(state, arguments)   return is_type(state, arguments, "number")   end
 local function is_string(state, arguments)   return is_type(state, arguments, "string")   end
+local function is_table(state, arguments)    return is_type(state, arguments, "table")    end
 local function is_nil(state, arguments)      return is_type(state, arguments, "nil")      end
 local function is_userdata(state, arguments) return is_type(state, arguments, "userdata") end
 local function is_function(state, arguments) return is_type(state, arguments, "function") end
@@ -126,10 +137,12 @@ assert:register("assertion", "false", is_false, "assertion.same.positive", "asse
 assert:register("assertion", "boolean", is_boolean, "assertion.same.positive", "assertion.same.negative")
 assert:register("assertion", "number", is_number, "assertion.same.positive", "assertion.same.negative")
 assert:register("assertion", "string", is_string, "assertion.same.positive", "assertion.same.negative")
+assert:register("assertion", "table", is_table, "assertion.same.positive", "assertion.same.negative")
 assert:register("assertion", "nil", is_nil, "assertion.same.positive", "assertion.same.negative")
 assert:register("assertion", "userdata", is_userdata, "assertion.same.positive", "assertion.same.negative")
 assert:register("assertion", "function", is_function, "assertion.same.positive", "assertion.same.negative")
 assert:register("assertion", "thread", is_thread, "assertion.same.positive", "assertion.same.negative")
+assert:register("assertion", "returned_arguments", returned_arguments, "assertion.returned_arguments.positive", "assertion.returned_arguments.negative")
 
 assert:register("assertion", "same", same, "assertion.same.positive", "assertion.same.negative")
 assert:register("assertion", "equals", equals, "assertion.equals.positive", "assertion.equals.negative")
