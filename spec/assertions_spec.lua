@@ -14,14 +14,30 @@ describe("Test Assertions", function()
     local table1 = { derp = false}
     local table2 = { derp = false}
     assert.same(table1, table2)
+
+    if type(jit) == "table" then
+      loadstring([[
+        local assert = require 'luassert'
+        assert.same(0ULL, 0)
+        assert.same(0, 0ULL)
+        assert.same({0ULL}, {0})
+        assert.same({0}, {0ULL})
+      ]])()
+    end
   end)
-  
+
+  it("Checks to see if tables 1 and 2 are not the same", function()
+    local table1 = { derp = false}
+    local table2 = { derp = true}
+    assert.is_not.same(table1, table2)
+  end)
+
   it("Checks the same() assertion for tables with protected metatables", function()
     local troubleSomeTable = {}
     setmetatable(troubleSomeTable, {__metatable = 0})
     assert.are.same(troubleSomeTable, troubleSomeTable)
   end)
-  
+
   it("Checks same() assertion to handle nils properly", function()
     assert.is.error(function() assert.same(nil) end)  -- minimum 2 arguments
     assert.same(nil, nil)
@@ -49,6 +65,32 @@ describe("Test Assertions", function()
     local tablenotunique = {table2,table2}
     assert.is.unique(table1)
     assert.is_not.unique(tablenotunique)
+  end)
+
+  it("Checks near() assertion handles tolerances", function()
+    assert.is.error(function() assert.near(0) end)  -- minimum 3 arguments
+    assert.is.error(function() assert.near(0, 0) end)  -- minimum 3 arguments
+    assert.is.error(function() assert.near('a', 0, 0) end)  -- arg1 must be convertable to number
+    assert.is.error(function() assert.near(0, 'a', 0) end)  -- arg2 must be convertable to number
+    assert.is.error(function() assert.near(0, 0, 'a') end)  -- arg3 must be convertable to number
+    assert.is.near(1.5, 2.0, 0.5)
+    assert.is.near('1.5', '2.0', '0.5')
+    assert.is_not.near(1.5, 2.0, 0.499)
+    assert.is_not.near('1.5', '2.0', '0.499')
+  end)
+
+  it("Checks matches() assertion does string matching", function()
+    assert.is.error(function() assert.matches('.*') end)  -- minimum 2 arguments
+    assert.is.error(function() assert.matches(nil, 's') end)  -- arg1 must be a string
+    assert.is.error(function() assert.matches('s', {}) end)  -- arg2 must be convertable to string
+    assert.is.error(function() assert.matches('s', 's', 's', 's') end)  -- arg3 or arg4 must be a number or nil
+    assert.matches("%w+", "test")
+    assert.has.match("%w+", "test")
+    assert.has_no.match("%d+", "derp")
+    assert.has.match("test", "test", nil, true)
+    assert.has_no.match("%w+", "test", nil, true)
+    assert.has.match("^test", "123 test", 5)
+    assert.has_no.match("%d+", "123 test", '4')
   end)
 
   it("Ensures the is operator doesn't change the behavior of equals", function()
@@ -83,20 +125,6 @@ describe("Test Assertions", function()
     assert.is_not.falsy(function() end)
     assert.is_not.falsy("")
     assert.is.falsy(false)
-  end)
-
-  it("tests the error outputted for same() with multiple arguments, to report the failing value", function()
-    local old_assertformat = assert.format
-    local arg1, arg2
-    assert.format = function(self, args)
-      args = old_assertformat(self, args)
-      arg1 = args[1]
-      arg2 = args[2]
-      return args
-    end
-    pcall(assert.are.same,"ok", "ok","not ok")
-    assert.format = old_assertformat
-    assert.are_not.equal(arg1, arg2)
   end)
 
   it("Ensures the Not operator does change the behavior of equals", function()

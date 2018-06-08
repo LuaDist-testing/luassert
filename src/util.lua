@@ -2,9 +2,8 @@ local util = {}
 function util.deepcompare(t1,t2,ignore_mt)
   local ty1 = type(t1)
   local ty2 = type(t2)
-  if ty1 ~= ty2 then return false end
   -- non-table types can be directly compared
-  if ty1 ~= 'table' then return t1 == t2 end
+  if ty1 ~= 'table' or ty2 ~= 'table' then return t1 == t2 end
   local mt1 = debug.getmetatable(t1)
   local mt2 = debug.getmetatable(t2)
   -- would equality be determined by metatable __eq?
@@ -16,14 +15,87 @@ function util.deepcompare(t1,t2,ignore_mt)
   end
   for k1,v1 in pairs(t1) do
     local v2 = t2[k1]
-    if v2 == nil or not util.deepcompare(v1,v2) then return false end
+    if v2 == nil then
+      return false, {k1}
+    end
+    local same, crumbs = util.deepcompare(v1,v2)
+    if not same then
+      crumbs = crumbs or {}
+      table.insert(crumbs, k1)
+      return false, crumbs
+    end
   end
   for k2,_ in pairs(t2) do
     -- only check wether each element has a t1 counterpart, actual comparison
     -- has been done in first loop above
-    if t1[k2] == nil then return false end
+    if t1[k2] == nil then return false, {k2} end
   end
   return true
+end
+
+function util.deepcopy(t, deepmt)
+  if type(t) ~= "table" then return t end
+  local copy = {}
+  for k,v in next, t, nil do
+    copy[k] = util.deepcopy(v)
+  end
+  if deepmt then
+    debug.setmetatable(copy, util.deepcopy(debug.getmetatable(t)))
+  else
+    debug.setmetatable(copy, debug.getmetatable(t))
+  end
+  return copy
+end
+
+-----------------------------------------------
+-- Copies arguments in a of arguments
+-- @param args the arguments of which to copy
+-- @return the copy of the arguments
+function util.copyargs(args)
+  local copy = {}
+  local match = require 'luassert.match'
+  for k,v in pairs(args) do
+    copy[k] = (match.is_matcher(v) and v or util.deepcopy(v))
+  end
+  return copy
+end
+
+-----------------------------------------------
+-- Finds matching arguments in a saved list of arguments
+-- @param argslist list of arguments from which to search
+-- @param args the arguments of which to find a match
+-- @return the matching arguments if a match is found, otherwise nil
+function util.matchargs(argslist, args)
+  local function matches(t1, t2)
+    local match = require 'luassert.match'
+    for k1,v1 in pairs(t1) do
+      local v2 = t2[k1]
+      if match.is_matcher(v1) then
+        if not v1(v2) then return false end
+      elseif match.is_matcher(v2) then
+        if not v2(v1) then return false end
+      elseif (v2 == nil or not util.deepcompare(v1,v2)) then
+        return false
+      end
+    end
+    for k2,v2 in pairs(t2) do
+      local v1 = t1[k2]
+      if match.is_matcher(v1) then
+        if not v1(v2) then return false end
+      elseif match.is_matcher(v2) then
+        if not v2(v1) then return false end
+      elseif v1 == nil then
+        return false
+      end
+    end
+    return true
+  end
+  for k,v in ipairs(argslist) do
+    if matches(v, args) then
+      return v
+    end
+  end
+  return nil
 end
 
 -----------------------------------------------
@@ -74,10 +146,12 @@ function util.tremove(t, pos)
   if not pos then
     pos = t.n
   elseif pos > t.n then
+    local removed = t[pos]
     -- out of our range
     t[pos] = nil
-    return
+    return removed
   end
+  local removed = t[pos]
   -- shift everything up 1 pos
   for i = pos, t.n do
     t[i]=t[i+1]
@@ -85,6 +159,7 @@ function util.tremove(t, pos)
   -- set size, clean last
   t[t.n] = nil
   t.n = t.n - 1
+  return removed
 end
 
 -----------------------------------------------
@@ -95,6 +170,63 @@ end
 -- @return boolean, true if the object is callable
 function util.callable(object)
   return type(object) == "function" or type((debug.getmetatable(object) or {}).__call) == "function"
+end
+-----------------------------------------------
+-- Checks an element has tostring.
+-- The type must either be a string or have a metatable
+-- containing an '__tostring' function.
+-- @param object element to inspect on having tostring or not
+-- @return boolean, true if the object has tostring
+function util.hastostring(object)
+  return type(object) == "string" or type((debug.getmetatable(object) or {}).__tostring) == "function"
+end
+
+-----------------------------------------------
+-- Find the first level, not defined in the same file as the caller's
+-- code file to properly report an error.
+-- @param level the level to use as the caller's source file
+-- @return number, the level of which to report an error
+function util.errorlevel(level)
+  local level = (level or 1) + 1 -- add one to get level of the caller
+  local info = debug.getinfo(level)
+  local source = (info or {}).source
+  local file = source
+  while file and (file == source or source == "=(tail call)") do
+    level = level + 1
+    info = debug.getinfo(level)
+    source = (info or {}).source
+  end
+  if level > 1 then level = level - 1 end -- deduct call to errorlevel() itself
+  return level
+end
+
+-----------------------------------------------
+-- Extract modifier and namespace keys from list of tokens.
+-- @param nspace the namespace from which to match tokens
+-- @param tokens list of tokens to search for keys
+-- @return table, list of keys that were extracted
+function util.extract_keys(nspace, tokens)
+  local namespace = require 'luassert.namespaces'
+  local level = (level or 1) + 1
+
+  -- find valid keys by coalescing tokens as needed, starting from the end
+  local keys = {}
+  local key = nil
+  for i = #tokens, 1, -1 do
+    local token = tokens[i]
+    key = key and (token .. '_' .. key) or token
+    if namespace.modifier[key] or namespace[nspace][key] then
+      table.insert(keys, 1, key)
+      key = nil
+    end
+  end
+
+  -- if there's anything left we didn't recognize it
+  if key then
+    error("luassert: unknown modifier/" .. nspace .. ": '" .. key .."'", util.errorlevel(2))
+  end
+
+  return keys
 end
 
 return util

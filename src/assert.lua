@@ -1,49 +1,29 @@
 local s = require 'say'
 local astate = require 'luassert.state'
+local util = require 'luassert.util'
 local obj   -- the returned module table
 
 -- list of namespaces
-local namespace = {}
+local namespace = require 'luassert.namespaces'
 
-local errorlevel = function()
-  -- find the first level, not defined in the same file as this
-  -- code file to properly report the error
-  local level = 1
-  local info = debug.getinfo(level)
-  local thisfile = (info or {}).source
-  while thisfile and thisfile == (info or {}).source do
-    level = level + 1
-    info = debug.getinfo(level)
+local function geterror(assertion_message, failure_message, args)
+  if util.hastostring(failure_message) then
+    failure_message = tostring(failure_message)
+  elseif failure_message ~= nil then
+    failure_message = astate.format_argument(failure_message)
   end
-  if level > 1 then level = level - 1 end -- deduct call to errorlevel() itself
-  return level
-end
-
-local function extract_keys(tokens)
-  -- find valid keys by coalescing tokens as needed, starting from the end
-  local keys = {}
-  local key = nil
-  for i = #tokens, 1, -1 do
-    local token = tokens[i]
-    key = key and (token .. '_' .. key) or token
-    if namespace.modifier[key] or namespace.assertion[key] then
-      table.insert(keys, 1, key)
-      key = nil
-    end
+  local message = s(assertion_message, obj:format(args))
+  if message and failure_message then
+    message = failure_message .. "\n" .. message
   end
-
-  -- if there's anything left we didn't recognize it
-  if key then
-    error("luassert: unknown modifier/assertion: '" .. key .."'", errorlevel())
-  end
-
-  return keys
+  return message or failure_message
 end
 
 local __state_meta = {
 
   __call = function(self, ...)
-    local keys = extract_keys(self.tokens)
+    local keys = util.extract_keys("assertion", self.tokens)
+    self.tokens = {}
 
     local assertion
 
@@ -60,14 +40,25 @@ local __state_meta = {
 
       local arguments = {...}
       arguments.n = select('#', ...) -- add argument count for trailing nils
-      local val = assertion.callback(self, arguments)
+      local val = assertion.callback(self, arguments, util.errorlevel())
 
       if not val == self.mod then
-        local message = self.mod and assertion.positive_message or assertion.negative_message
-        error(s(message, obj:format(arguments)) or "assertion failed!", errorlevel())
+        local message = assertion.positive_message
+        if not self.mod then
+          message = assertion.negative_message
+        end
+        local err = geterror(message, rawget(self,"failure_message"), arguments)
+        error(err or "assertion failed!", util.errorlevel())
       end
     else
-      self.payload = ...
+      local arguments = {...}
+      arguments.n = select('#', ...)
+
+      for _, key in ipairs(keys) do
+        if namespace.modifier[key] then
+          namespace.modifier[key].callback(self, arguments, util.errorlevel())
+        end
+      end
     end
 
     return self
@@ -114,10 +105,11 @@ obj = {
   format = function(self, args)
     -- args.n specifies the number of arguments in case of 'trailing nil' arguments which get lost
     local nofmt = args.nofmt or {}  -- arguments in this list should not be formatted
+    local fmtargs = args.fmtargs or {} -- additional arguments to be passed to formatter
     for i = 1, (args.n or #args) do -- cannot use pairs because table might have nils
       if not nofmt[i] then
         local val = args[i]
-        local valfmt = astate.format_argument(val)
+        local valfmt = astate.format_argument(val, nil, fmtargs[i])
         if valfmt == nil then valfmt = tostring(val) end -- no formatter found
         args[i] = valfmt
       end
@@ -144,11 +136,12 @@ obj = {
 
 local __meta = {
 
-  __call = function(self, bool, message, ...)
+  __call = function(self, bool, message, level, ...)
     if not bool then
-      error(message or "assertion failed!", 2)
+      local level = (level or 1) + 1
+      error(message or "assertion failed!", level)
     end
-    return bool , message , ...
+    return bool , message , level , ...
   end,
 
   __index = function(self, key)

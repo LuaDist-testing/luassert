@@ -1,16 +1,16 @@
 -- This file was automatically generated for the LuaDist project.
 
 package = "luassert"
-version = "1.7.6-0"
+version = "1.7.7-0"
 -- LuaDist source
 source = {
-  tag = "1.7.6-0",
+  tag = "1.7.7-0",
   url = "git://github.com/LuaDist-testing/luassert.git"
 }
 -- Original source
 -- source = {
---   url = "https://github.com/Olivine-Labs/luassert/archive/v1.7.6.tar.gz",
---   dir = "luassert-1.7.6"
+--   url = "https://github.com/Olivine-Labs/luassert/archive/v1.7.7.tar.gz",
+--   dir = "luassert-1.7.7"
 -- }
 description = {
   summary = "Lua Assertions Extension",
@@ -36,8 +36,13 @@ build = {
     ["luassert.assert"] = "src/assert.lua",
     ["luassert.modifiers"] = "src/modifiers.lua",
     ["luassert.assertions"] = "src/assertions.lua",
+    ["luassert.namespaces"] = "src/namespaces.lua",
+    ["luassert.match"] = "src/match.lua",
     ["luassert.mock"] = "src/mock.lua",
     ["luassert.init"] = "src/init.lua",
+    ["luassert.matchers.init"] = "src/matchers/init.lua",
+    ["luassert.matchers.core"] = "src/matchers/core.lua",
+    ["luassert.matchers.composite"] = "src/matchers/composite.lua",
     ["luassert.formatters.init"] = "src/formatters/init.lua",
     ["luassert.formatters.binarystring"] = "src/formatters/binarystring.lua",
     ["luassert.languages.en"] = "src/languages/en.lua",
